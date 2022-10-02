@@ -47,6 +47,7 @@ find(char *path, char* string) {
                 printf("ls: path too long\n");
                 break;
             }
+            
 
             strcpy(buf, path);
             p = buf+strlen(buf);
