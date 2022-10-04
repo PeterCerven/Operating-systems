@@ -176,6 +176,7 @@ UPROGS=\
 	$U/_echo\
 	$U/_forktest\
 	$U/_grep\
+	$U/_grind\
 	$U/_init\
 	$U/_kill\
 	$U/_ln\
@@ -184,8 +185,9 @@ UPROGS=\
 	$U/_rm\
 	$U/_sh\
 	$U/_stressfs\
+	$U/_sysinfotest\
+	$U/_trace\
 	$U/_usertests\
-	$U/_grind\
 	$U/_wc\
 	$U/_zombie\
 

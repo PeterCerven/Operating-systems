@@ -1,0 +1,8 @@
+1: Po prezretí výstupu backtrace, ktorá funkcia zavolala funkciu syscall?
+usertrap in kernel/trap.c
+2: Aká je hodnota p->trapframe->a7 a čo reprezentuje? (Pomôcka: pozrite sa do user/initcode.S na prvý program, ktorý xv6 spustí.)
+0x87f74000 SYS_exec
+3: Aký je predchádzajúci mód, v ktorom sa nachádzal procesor? Podľa čoho ste to zistili?
+machine mode can do anything used when initializing program
+4: Zapíšte inštrukciu jazyka assembly na ktorej jadro vyvolalo panic. V ktorom registri je uložená hodnota num?
+$1 = 0x800013a2 mozno neviem

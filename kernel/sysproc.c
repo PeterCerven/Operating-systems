@@ -5,6 +5,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "sysinfo.h"
 
 uint64
 sys_exit(void)
@@ -91,3 +92,52 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// trace syscalls using mask
+uint64
+sys_trace(void)
+{
+  int mask;
+
+  argint(0, &mask);
+
+  myproc()->trace_mask = mask;
+  return 0;
+}
+
+uint64
+sys_sysinfo(void)
+{
+  struct sysinfo f;
+  uint64 addr;
+  struct proc *p;
+
+  if ((p = myproc()) <= 0) {
+    printf("zly proces\n");
+    return 1;
+  }
+
+  printf("ziskany proces\n");
+  
+  argaddr(0, &addr);
+
+  printf("adresa %d\n", addr);
+  
+  f.nproc = getUnusedProcs();
+
+  printf("pocet procesov: %d \n", f.nproc);
+  f.freemem = getFreeMemory();
+
+  printf("free mem: %d \n", f.freemem);
+
+
+  if (copyout(p->pagetable, addr, (char *)&f, sizeof(f)) < 0) {
+    printf("bad copyout\n\n");
+    return -1;
+  }
+  printf("went good\n\n");
+  
+  return 0;
+}
+
+
