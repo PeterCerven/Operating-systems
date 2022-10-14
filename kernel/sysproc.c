@@ -54,7 +54,7 @@ sys_sleep(void)
   int n;
   uint ticks0;
 
-
+  
   argint(0, &n);
   acquire(&tickslock);
   ticks0 = ticks;
@@ -70,14 +70,37 @@ sys_sleep(void)
 }
 
 
-#ifdef LAB_PGTBL
+//#ifdef LAB_PGTBL
 int
 sys_pgaccess(void)
 {
   // lab pgtbl: your code here.
+
+  uint64 start;
+  int npages;
+  uint64 bitmask_user_address;
+
+  uint64 bitmask_kernel = 0;
+
+  argaddr(0, &start);
+  argint(1, &npages);
+  argaddr(2, &bitmask_user_address);
+
+  for (int i = 0; i < npages; i++) {
+    pte_t *pte = walk(myproc()->pagetable, start, 0);
+    if (*pte & PTE_A) {
+      bitmask_kernel |= 1 << i;
+      *pte &= ~PTE_A;
+    }
+
+    start += PGSIZE;
+  }
+  if (copyout(myproc()->pagetable, bitmask_user_address, (char *) &bitmask_kernel, (npages + 7)/8))
+    return -1;
+
   return 0;
 }
-#endif
+//#endif
 
 uint64
 sys_kill(void)
@@ -100,3 +123,4 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
