@@ -54,7 +54,7 @@ usertrap(void)
     // system call
 
     if(killed(p))
-      exit(-1);
+      exit(-1); 
 
     // sepc points to the ecall instruction,
     // but we want to return to the next instruction.
@@ -65,6 +65,10 @@ usertrap(void)
     intr_on();
 
     syscall();
+  } else if (r_scause() == 15) {
+    if(uvmcow(p->pagetable, r_stval()) != 0) 
+      //setkilled(p);
+      p->killed = 1;
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
