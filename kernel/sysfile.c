@@ -258,6 +258,9 @@ create(char *path, short type, short major, short minor)
     ilock(ip);
     if(type == T_FILE && (ip->type == T_FILE || ip->type == T_DEVICE))
       return ip;
+    if (type == T_SYMLINK) {
+      return ip;
+    }
     iunlockput(ip);
     return 0;
   }
@@ -339,6 +342,31 @@ sys_open(void)
     iunlockput(ip);
     end_op();
     return -1;
+  }
+
+  if ((ip->type == T_SYMLINK) && !(omode & O_NOFOLLOW)){
+    int count = 0;
+    while (ip->type == T_SYMLINK && count < 10) {
+      int len = 0;
+      readi(ip, 0, (uint64)&len, 0, sizeof(int));
+
+      if(len > MAXPATH)
+        panic("open: corrupted symlink inode");
+
+      readi(ip, 0, (uint64)path, sizeof(int), len + 1);
+      iunlockput(ip);
+      if((ip = namei(path)) == 0){
+        end_op();
+        return -1;
+      }
+      ilock(ip);
+      count++;
+    }
+    if (count >= 10) {
+      iunlockput(ip);
+      end_op();
+      return -1;
+    }
   }
 
   if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
@@ -501,5 +529,29 @@ sys_pipe(void)
     fileclose(wf);
     return -1;
   }
+  return 0;
+}
+
+uint64
+sys_symlink(void)
+{
+  char path[MAXPATH], target[MAXPATH];
+  struct inode *ip;
+
+  if(argstr(0, target, MAXPATH) < 0 || argstr(1, path, MAXPATH) < 0)
+    return -1;
+
+  begin_op();
+  if((ip = create(path, T_SYMLINK, 0, 0)) == 0) {
+    end_op();
+    return -1;
+  }
+  
+  int len = strlen(target);
+  writei(ip, 0, (uint64)&len, 0, sizeof(int));
+  writei(ip, 0, (uint64)target, sizeof(int), len + 1);
+  iunlockput(ip);
+
+  end_op();
   return 0;
 }
