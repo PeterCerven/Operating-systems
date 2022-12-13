@@ -5,6 +5,11 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "spinlock.h"
+#include "proc.h"
+#include "sleeplock.h"
+#include "file.h"
+#include "fcntl.h"
 
 /*
  * the kernel's page table.
@@ -437,3 +442,41 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+struct vma *
+find_empty_vma(struct proc *p) {
+  for(int i = 0; i < VMA_NUM; i++) {
+    if (p->vma[i].f == 0) {
+      return p->vma + i;
+    }
+  }
+  return 0;
+}
+
+// Find address to map a file
+uint64
+alloc_mmap(struct proc *p) {
+  uint64 start = MMAP;
+  for(int i = 0; i < VMA_NUM; i++) {
+    if (p->vma[i].f != 0) {
+      if(p->vma[i].address + p->vma[i].length > start) {
+        start = p->vma[i].address + p->vma[i].length;
+      }
+    }
+  }
+  return start;
+}
+
+struct vma *
+search_vma(struct proc *p, uint64 addr) {
+  for(int i = 0; i < VMA_NUM; i++) {
+    if (p->vma[i].f != 0) {
+      if(addr >= p->vma[i].address && addr < p->vma[i].address + p->vma->length) {
+        return p->vma + i;
+      }
+    }
+  }
+  return 0;
+}
+
+

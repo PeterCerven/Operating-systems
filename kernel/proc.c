@@ -380,6 +380,8 @@ exit(int status)
 
   release(&wait_lock);
 
+
+
   // Jump into the scheduler, never to return.
   sched();
   panic("zombie exit");

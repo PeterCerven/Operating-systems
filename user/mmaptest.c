@@ -128,8 +128,10 @@ mmap_test(void)
   if (close(fd) == -1)
     err("close");
   _v1(p);
+  printf("susMap\n");
   for (i = 0; i < PGSIZE*2; i++)
     p[i] = 'Z';
+  printf("susMap2\n");
   if (munmap(p, PGSIZE*2) == -1)
     err("munmap (2)");
 
@@ -195,8 +197,9 @@ mmap_test(void)
   printf("test not-mapped unmap\n");
   
   // unmap the rest of the mapped memory.
-  if (munmap(p+PGSIZE*2, PGSIZE) == -1)
+  if (munmap(p+PGSIZE*2, PGSIZE) == -1) {
     err("munmap (4)");
+  }
 
   printf("test not-mapped unmap: OK\n");
     

@@ -3,8 +3,12 @@
 #include "memlayout.h"
 #include "riscv.h"
 #include "spinlock.h"
+#include "sleeplock.h"
 #include "proc.h"
 #include "defs.h"
+#include "fs.h"
+#include "file.h"
+#include "fcntl.h"
 
 struct spinlock tickslock;
 uint ticks;
@@ -65,6 +69,62 @@ usertrap(void)
     intr_on();
 
     syscall();
+    // 13 read 15 write
+  } else if (r_scause() == 15 || r_scause() == 13) {
+    struct vma *vma = search_vma(myproc(), r_stval());
+    if (vma == 0 ) {
+      exit(-1);
+    }
+
+    if(r_scause() == 15 && (!(vma->prot & PROT_WRITE) || !(vma->flags & MAP_SHARED))) {
+      killed(p);
+      exit(-1);
+    }
+    char* mem = kalloc();
+    if (mem == 0) {
+      exit(-1);
+    }
+
+    memset(mem, 0, PGSIZE);
+
+    struct file *f = vma->f;
+
+    uint off = PGROUNDDOWN(r_stval()) - vma->address + vma->offset;
+
+    ilock(f->ip);
+    if (readi(f->ip, 0, (uint64)mem, off, PGSIZE) <= 0) {
+      iunlock(f->ip);  
+      kfree(mem);
+      exit(-1);
+    }
+
+    printf("vma->addr  : %p\n", vma->address);
+    printf("vma->offset: %p\n", vma->offset);
+    printf("vma->length: %p\n\n", vma->length);
+
+    iunlock(f->ip);
+    //&& vma->flags & MAP_SHARED
+    if (vma->prot & PROT_WRITE) {
+      printf("mmap:      %p\n", r_stval());
+      printf("write\n");
+      if (mappages(p->pagetable, PGROUNDDOWN(r_stval()), PGSIZE, (uint64)mem, PTE_W | PTE_U | PTE_R) != 0) {
+        printf("susy\n");
+        kfree(mem);
+        p->killed = 1;
+      }
+    } else if (vma->prot & PROT_READ) {
+      printf("mmap:      %p\n", r_stval());
+      printf("zap\n");
+      if (mappages(p->pagetable, PGROUNDDOWN(r_stval()), PGSIZE, (uint64)mem, PTE_W | PTE_U | PTE_R) != 0) {
+        printf("sush\n");
+        kfree(mem);
+        p->killed = 1;
+      }
+    }
+
+    // Map with correct flags
+
+
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {

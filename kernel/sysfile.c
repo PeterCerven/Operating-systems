@@ -15,6 +15,7 @@
 #include "sleeplock.h"
 #include "file.h"
 #include "fcntl.h"
+#include "memlayout.h"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -501,5 +502,95 @@ sys_pipe(void)
     fileclose(wf);
     return -1;
   }
+  return 0;
+}
+
+uint64
+sys_mmap(void)
+{
+  uint64 addr;
+  int length, prot, flags, fd, offset;
+  // printf("sussy\n");
+
+  argaddr(0, &addr);
+  argint(1, &length);
+  argint(2, &prot);
+  argint(3, &flags);
+  argint(4, &fd);
+  argint(5, &offset);
+  // printf("sus\n");
+  struct vma *vma = find_empty_vma(myproc());
+  if (vma == 0) {
+    return -1;
+  }
+  vma->length = length;
+  vma->flags = flags;
+  vma->offset = offset;
+  vma->prot = prot;
+
+  if (flags & MAP_SHARED && !myproc()->ofile[fd]->writable && prot & PROT_WRITE) {
+    return - 1;
+  }
+  // printf("sus\n");
+  uint64 mmap_addr = alloc_mmap(myproc());
+
+  if (mmap_addr + length >= TRAPFRAME) {
+    return -1;
+  }
+
+  vma->f = myproc()->ofile[fd];
+  filedup(vma->f);
+
+  vma->address = mmap_addr;
+
+
+  return mmap_addr;
+}
+
+uint64
+sys_munmap(void)
+{
+  uint64 addr;
+  int length;
+
+  argaddr(0, &addr);
+  argint(1, &length);
+
+  struct vma *vma;  
+  printf("addr     : %p\n", addr);
+  if ((vma = search_vma(myproc(), addr)) == 0) {
+    printf("huh\n");
+    return -1;
+  }
+
+  printf("lul\n");
+
+  if (vma->flags & MAP_SHARED) {
+    begin_op();
+    ilock(vma->f->ip);
+  
+    writei(vma->f->ip, 1, PGROUNDDOWN(addr), 0, length);
+    iunlock(vma->f->ip);
+    end_op();
+  }
+  
+  printf("munmap beg:%p\n", addr); 
+  printf("munmap end:%p\n", addr + PGSIZE * (length / PGSIZE - 1));
+  printf("start umapping: %p\n", PGROUNDDOWN(addr) + vma->offset);
+  uvmunmap(myproc()->pagetable, PGROUNDDOWN(addr) + vma->offset, length / PGSIZE, 1);
+
+
+  if (vma->address == addr) {
+    vma->offset += length/PGSIZE * PGSIZE;
+    printf("vma->offset: %p\n", vma->offset);
+    printf("vma->addr  : %p\n", vma->address);
+    printf("beg: \n");
+  } else {
+    printf("end: \n");
+    vma->length -= length/PGSIZE * PGSIZE;
+  }
+  
+  fileclose(vma->f);
+  
   return 0;
 }
